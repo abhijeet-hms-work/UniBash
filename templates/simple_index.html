@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBash - Fast Web Terminal</title>
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', monospace;
+      background: #0d1117;
+      color: #f0f6fc;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      font-size: 1.5rem;
+      color: #58a6ff;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #39d353;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.disconnected {
+      background: #f85149;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    .terminal-container {
+      height: calc(100vh - 80px);
+      padding: 1rem;
+    }
+    
+    #terminal {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      background: #0d1117;
+    }
+    
+    .footer {
+      position: absolute;
+      bottom: 10px;
+      right: 20px;
+      font-size: 0.75rem;
+      color: #8b949e;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .terminal-container {
+        height: calc(100vh - 100px);
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🖥️ CBash Terminal</h1>
+    <div class="status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+  </div>
+  
+  <div class="terminal-container">
+    <div id="terminal"></div>
+  </div>
+  
+  <div class="footer">
+    Built with ❤️ by Soha Farhana
+  </div>
+
+  <script>
+    // Terminal setup
+    const terminal = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'SF Mono, Monaco, Inconsolata, Consolas, monospace',
+      theme: {
+        background: '#0d1117',
+        foreground: '#f0f6fc',
+        cursor: '#58a6ff',
+        selection: '#3d444d',
+        black: '#484f58',
+        red: '#ff7b72',
+        green: '#39d353',
+        yellow: '#ffdf5d',
+        blue: '#58a6ff',
+        magenta: '#bc8cff',
+        cyan: '#39c5cf',
+        white: '#b1bac4'
+      },
+      scrollback: 1000
+    });
+
+    terminal.open(document.getElementById('terminal'));
+
+    // Socket.IO setup
+    const socket = io();
+    
+    // Connection status
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    
+    socket.on('connect', () => {
+      statusDot.classList.remove('disconnected');
+      statusText.textContent = 'Connected';
+    });
+    
+    socket.on('disconnect', () => {
+      statusDot.classList.add('disconnected');
+      statusText.textContent = 'Disconnected';
+    });
+
+    // Terminal events
+    socket.on('initial_prompt', (prompt) => {
+      terminal.write(prompt);
+    });
+
+    socket.on('response', (data) => {
+      terminal.write(data);
+    });
+
+    socket.on('clear_terminal', (data) => {
+      terminal.clear();
+      terminal.write(data.cwd + ' $ ');
+    });
+
+    // Input handling
+    let currentLine = '';
+    let commandHistory = [];
+    let historyIndex = -1;
+
+    terminal.onData((data) => {
+      const code = data.charCodeAt(0);
+
+      if (code === 13) { // Enter
+        terminal.write('\r\n');
+        if (currentLine.trim()) {
+          commandHistory.push(currentLine);
+          socket.emit('command', currentLine);
+        }
+        historyIndex = commandHistory.length;
+        currentLine = '';
+
+      } else if (code === 127) { // Backspace
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          terminal.write('\b \b');
+        }
+
+      } else if (data === '\u001b[A') { // Up arrow
+        if (historyIndex > 0) {
+          // Clear current line
+          for (let i = 0; i < currentLine.length; i++) {
+            terminal.write('\b \b');
+          }
+          historyIndex--;
+          currentLine = commandHistory[historyIndex];
+          terminal.write(currentLine);
+        }
+
+      } else if (data === '\u001b[B') { // Down arrow
+        if (historyIndex < commandHistory.length - 1) {
+          // Clear current line
+          for (let i = 0; i < currentLine.length; i++) {
+            terminal.write('\b \b');
+          }
+          historyIndex++;
+          currentLine = commandHistory[historyIndex];
+          terminal.write(currentLine);
+        } else if (historyIndex === commandHistory.length - 1) {
+          // Clear current line
+          for (let i = 0; i < currentLine.length; i++) {
+            terminal.write('\b \b');
+          }
+          historyIndex++;
+          currentLine = '';
+        }
+
+      } else if (data === '\u0003') { // Ctrl+C
+        terminal.write('^C\r\n');
+        currentLine = '';
+        socket.emit('command', '');
+
+      } else if (data.length === 1 && code >= 32) { // Printable characters
+        currentLine += data;
+        terminal.write(data);
+      }
+    });
+
+    // Focus terminal
+    terminal.focus();
+    
+    // Keep focus on terminal
+    document.addEventListener('click', () => {
+      terminal.focus();
+    });
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      terminal.fit();
+    });
+  </script>
+</body>
+</html>

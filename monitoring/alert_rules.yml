@@ -1,0 +1,56 @@
+groups:
+  - name: cbash_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: cbash_system_cpu_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CBash server CPU usage is high"
+          description: "CPU usage has been above 80% for more than 5 minutes"
+
+      - alert: HighMemoryUsage
+        expr: cbash_system_memory_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CBash server memory usage is high"
+          description: "Memory usage has been above 85% for more than 5 minutes"
+
+      - alert: CommandExecutionTimeHigh
+        expr: histogram_quantile(0.95, cbash_command_duration_seconds_bucket) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Command execution time is high"
+          description: "95th percentile of command execution time is above 10 seconds"
+
+      - alert: TooManyActiveSessions
+        expr: cbash_active_sessions > 100
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Too many active sessions"
+          description: "Number of active sessions has exceeded 100"
+
+      - alert: ApplicationDown
+        expr: up{job="cbash-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CBash application is down"
+          description: "CBash application has been down for more than 1 minute"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 1 minute"

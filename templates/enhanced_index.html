@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBash - Advanced Web Terminal</title>
+  
+  <!-- External Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.8.0/lib/xterm-addon-web-links.min.js"></script>
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>🖥️ CBash Terminal</h1>
+      <div class="connection-status">
+        <div class="status-indicator" id="statusIndicator"></div>
+        <span id="connectionStatus">Connecting...</span>
+      </div>
+    </div>
+    
+    <div class="header-stats">
+      <div class="stat-item">
+        <div class="stat-value" id="sessionCount">0</div>
+        <div class="stat-label">Commands</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="uptime">0s</div>
+        <div class="stat-label">Uptime</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="cpuUsage">0%</div>
+        <div class="stat-label">CPU</div>
+      </div>
+    </div>
+    
+    <div class="header-controls">
+      <button class="btn btn-icon" id="sidebarToggle" title="Toggle Sidebar">☰</button>
+      <button class="btn btn-icon" id="commandPaletteBtn" title="Command Palette (Ctrl+Shift+P)">⌘</button>
+      <button class="btn btn-icon" id="themeToggle" title="Toggle Theme">🎨</button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="terminal-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h3>Tools</h3>
+        <button class="btn btn-sm" id="closeSidebar">×</button>
+      </div>
+      
+      <div class="sidebar-content">
+        <!-- Performance Monitor -->
+        <div class="performance-monitor">
+          <div class="file-explorer-header">📊 Performance</div>
+          <canvas class="performance-chart" id="performanceChart"></canvas>
+          <div class="performance-stats">
+            <div class="stat-row">
+              <span>Memory:</span>
+              <span id="memoryUsage">0%</span>
+            </div>
+            <div class="stat-row">
+              <span>Disk:</span>
+              <span id="diskUsage">0%</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Quick Commands -->
+        <div class="quick-commands">
+          <div class="file-explorer-header">⚡ Quick Commands</div>
+          <div class="command-buttons">
+            <button class="quick-cmd-btn" data-cmd="ls -la">📂 List All</button>
+            <button class="quick-cmd-btn" data-cmd="pwd">📍 Current Dir</button>
+            <button class="quick-cmd-btn" data-cmd="ps aux">⚙️ Processes</button>
+            <button class="quick-cmd-btn" data-cmd="df -h">💾 Disk Usage</button>
+            <button class="quick-cmd-btn" data-cmd="top -n 1">📈 System Info</button>
+            <button class="quick-cmd-btn" data-cmd="cbash status">🔍 CBash Status</button>
+          </div>
+        </div>
+        
+        <!-- Terminal Themes -->
+        <div class="terminal-theme-selector">
+          <div class="file-explorer-header">🎨 Themes</div>
+          <div class="theme-options">
+            <div class="theme-option active" data-theme="dark">
+              <div class="theme-preview" style="background: #0d1117;"></div>
+              <span>Dark</span>
+            </div>
+            <div class="theme-option" data-theme="light">
+              <div class="theme-preview" style="background: #ffffff;"></div>
+              <span>Light</span>
+            </div>
+            <div class="theme-option" data-theme="hacker">
+              <div class="theme-preview" style="background: #000000;"></div>
+              <span>Hacker</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Terminal Area -->
+    <main class="terminal-main">
+      <!-- Terminal Wrapper -->
+      <div class="terminal-wrapper">
+        <div id="terminal"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Command Palette -->
+  <div class="command-palette" id="commandPalette">
+    <input type="text" class="command-input" id="commandInput" placeholder="Type a command or search...">
+    <div class="command-results" id="commandResults"></div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="notifications" id="notifications"></div>
+
+  <!-- Main JavaScript -->
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
